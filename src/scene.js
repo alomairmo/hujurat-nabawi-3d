@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createExteriorModel, createInteriorModel } from './procedural-models.js';
 import { createIcons, Tags, Info, CircleHelp, X, Bookmark, BookOpen, MousePointer2, Landmark, DoorOpen, RotateCcw, ScrollText, TriangleAlert, Download, ArrowLeft, RotateCw, Award } from 'lucide';
 import { EXTERIOR_ITEMS, INTERIOR_ITEMS, QUIZ_QUESTIONS } from './content.js';
-import './style.css';
 
 const ICONS={Tags,Info,CircleHelp,X,Bookmark,BookOpen,MousePointer2,Landmark,DoorOpen,RotateCcw,ScrollText,TriangleAlert,Download,ArrowLeft,RotateCw,Award};
 const refreshIcons=()=>createIcons({icons:ICONS,attrs:{'aria-hidden':'true'}});
@@ -39,14 +38,14 @@ function startExperience(){
   const context=new THREE.Group(),contextGeometry=new THREE.BoxGeometry(1,1,1),contextMaterial=new THREE.MeshStandardMaterial({color:0x9a7a50,roughness:1});
   const contextMesh=new THREE.InstancedMesh(contextGeometry,contextMaterial,46),matrix=new THREE.Matrix4(),position=new THREE.Vector3(),quaternion=new THREE.Quaternion(),scale=new THREE.Vector3();
   for(let i=0;i<46;i++){const angle=(i/46)*Math.PI*2+rand()*.12,radius=62+rand()*92,h=2+rand()*4.5;position.set(Math.cos(angle)*radius,h/2-.62,Math.sin(angle)*radius);scale.set(4+rand()*8,h,4+rand()*8);matrix.compose(position,quaternion,scale);contextMesh.setMatrixAt(i,matrix);}context.add(contextMesh);scene.add(context);
-  const loader=new GLTFLoader(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();
+  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();
   let pointerStart={x:0,y:0},frameEMA=1/60,previousTime=performance.now(),frameCount=0,fps=60;
   function configureModel(model,isInterior){model.traverse((object)=>{if(!object.isMesh)return;object.castShadow=!object.name.startsWith('scene_base')&&!object.name.startsWith('room_architecture');object.receiveShadow=true;if(object.material)object.material.roughness=Math.max(object.material.roughness||0,.82);});model.visible=!isInterior;scene.add(model);}
   function setLoading(percent,text){$('loading-progress').style.width=`${percent}%`;if(text)$('loading-text').textContent=text;}
   async function loadModels(){
     try{
-      setLoading(18,'تُحمّل معالم المسجد والحُجُرات…');const exterior=await loader.loadAsync('./models/exterior.glb');exteriorModel=exterior.scene;configureModel(exteriorModel,false);
-      setLoading(58,'تُجهّز الحجرة وأدواتها…');const interior=await loader.loadAsync('./models/interior.glb');interiorModel=interior.scene;configureModel(interiorModel,true);
+      setLoading(18,'تُبنى معالم المسجد والحُجُرات…');await new Promise(requestAnimationFrame);exteriorModel=createExteriorModel();configureModel(exteriorModel,false);
+      setLoading(58,'تُجهّز الحجرة وأدواتها…');await new Promise(requestAnimationFrame);interiorModel=createInteriorModel();configureModel(interiorModel,true);
       setLoading(88,'تُرتّب البطاقات التعريفية…');setView(params.get('view')==='interior'?'interior':'exterior',false);renderFrame();setLoading(100,'اكتمل المشهد');
       window.__SCENE_READY__=true;document.body.dataset.ready='true';
       setTimeout(()=>{$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;},reducedMotion?0:260);},reducedMotion?0:180);

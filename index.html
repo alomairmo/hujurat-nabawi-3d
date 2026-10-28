@@ -7,6 +7,13 @@
   <meta name="description" content="مجسم تفاعلي تعليمي للمسجد النبوي والحجرات في العهد النبوي، مع بطاقات تعريفية واختبار.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2324352f'/%3E%3Cpath d='M15 51V30C15 15 23 9 32 9s17 6 17 21v21M23 51V31c0-9 4-14 9-14s9 5 9 14v20M11 51h42' fill='none' stroke='%23e7d8b9' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <title>في رحاب العهد النبوي | مجسم تفاعلي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/style.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/","lucide":"https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/esm/lucide.js"}}
+  </script>
 </head>
 <body>
   <main id="app" aria-label="مجسم المسجد والحجرات في العهد النبوي">
@@ -58,9 +65,7 @@
       <li><strong>جامع الترمذي ٢٤٦٩</strong><span>مسند من أدم محشو بليف النخل.</span></li>
       <li><strong>صحيح البخاري ٤٩١٣</strong><span>الحصير والمسند والقِرَب في رواية وصف المضجع.</span></li>
     </ul>
-    <h3>ملفات المجسم</h3>
-    <div class="download-links"><a class="button button-quiet" href="./models/exterior.glb" download="المسجد-والحجرات.glb"><i data-lucide="download"></i>المشهد العام GLB</a><a class="button button-quiet" href="./models/interior.glb" download="الحجرة-الداخلية.glb"><i data-lucide="download"></i>الحجرة GLB</a></div>
-    <p class="local-note">تعمل التجربة دون حساب، ولا تُحفظ نتيجة الاختبار بعد إغلاق الصفحة.</p>
+    <p class="local-note">تعمل التجربة مباشرة داخل المتصفح دون حساب أو تنزيل ملفات، ولا تُحفظ نتيجة الاختبار بعد إغلاق الصفحة.</p>
   </dialog>
   <script type="module" src="./src/scene.js"></script>
 </body>
