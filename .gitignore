@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.local
+*.log
+*.blend1
+.DS_Store
