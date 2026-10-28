@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createExteriorModel, createInteriorModel } from './procedural-models.js';
-import { createIcons, Tags, Info, CircleHelp, X, Bookmark, BookOpen, MousePointer2, Landmark, DoorOpen, RotateCcw, ScrollText, TriangleAlert, Download, ArrowLeft, RotateCw, Award } from 'lucide';
+import { addCustomModels } from './custom-models.js';
+import { createIcons, Tags, Info, CircleHelp, X, Bookmark, BookOpen, MousePointer2, Landmark, DoorOpen, RotateCcw, ScrollText, TriangleAlert, Download, ArrowLeft, RotateCw, Award, Utensils } from 'lucide';
 import { EXTERIOR_ITEMS, INTERIOR_ITEMS, QUIZ_QUESTIONS } from './content.js';
 
-const ICONS={Tags,Info,CircleHelp,X,Bookmark,BookOpen,MousePointer2,Landmark,DoorOpen,RotateCcw,ScrollText,TriangleAlert,Download,ArrowLeft,RotateCw,Award};
+const ICONS={Tags,Info,CircleHelp,X,Bookmark,BookOpen,MousePointer2,Landmark,DoorOpen,RotateCcw,ScrollText,TriangleAlert,Download,ArrowLeft,RotateCw,Award,Utensils};
 const refreshIcons=()=>createIcons({icons:ICONS,attrs:{'aria-hidden':'true'}});
 refreshIcons();
 const $=(id)=>document.getElementById(id);
@@ -12,7 +13,7 @@ const params=new URLSearchParams(location.search);
 const CAPTURE_MODE=params.has('capture');
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ALL_ITEMS=[...EXTERIOR_ITEMS,...INTERIOR_ITEMS];
-let currentView='exterior',selectedItemId=null,labelsVisible=true,currentItems=EXTERIOR_ITEMS;
+let currentView='exterior',currentStage=params.get('stage')==='after'?'after':'lifetime',selectedItemId=null,labelsVisible=true,currentItems=EXTERIOR_ITEMS;
 let exteriorModel=null,interiorModel=null,labelButtons=[],renderer;
 function mulberry32(a){return function(){a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
 const rand=mulberry32(622);
@@ -45,44 +46,93 @@ function startExperience(){
   async function loadModels(){
     try{
       setLoading(18,'تُبنى معالم المسجد والحُجُرات…');await new Promise(requestAnimationFrame);exteriorModel=createExteriorModel();configureModel(exteriorModel,false);
-      setLoading(58,'تُجهّز الحجرة وأدواتها…');await new Promise(requestAnimationFrame);interiorModel=createInteriorModel();configureModel(interiorModel,true);
-      setLoading(88,'تُرتّب البطاقات التعريفية…');setView(params.get('view')==='interior'?'interior':'exterior',false);renderFrame();setLoading(100,'اكتمل المشهد');
+      setLoading(52,'تُجهّز الحجرة وأدواتها…');await new Promise(requestAnimationFrame);interiorModel=createInteriorModel();
+      setLoading(70,'تُحمّل الرحى والسلة والزير المخصصة…');await addCustomModels(interiorModel);configureModel(interiorModel,true);
+      setLoading(88,'تُرتّب البطاقات التعريفية…');const requestedView=['interior','tools'].includes(params.get('view'))?params.get('view'):'exterior';setView(requestedView,false);renderFrame();setLoading(100,'اكتمل المشهد');
       window.__SCENE_READY__=true;document.body.dataset.ready='true';
-      setTimeout(()=>{$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;},reducedMotion?0:260);},reducedMotion?0:180);
+      if(CAPTURE_MODE)$('loading-screen').hidden=true;else setTimeout(()=>{$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;},reducedMotion?0:260);},reducedMotion?0:180);
       if(!CAPTURE_MODE)renderer.setAnimationLoop(animate);
     }catch(error){console.error('Model loading failed',error);$('loading-text').textContent='تعذّر تحميل ملفات المجسم. أعد تحميل الصفحة للمحاولة مرة أخرى.';$('loading-progress').style.width='100%';$('loading-progress').style.background='#c98265';}
   }
-  function updateLabels(){if(!labelsVisible)return;for(const entry of labelButtons){projected.copy(entry.item.vector).project(camera);const visible=projected.z>-1&&projected.z<1&&projected.x>-1.08&&projected.x<1.08&&projected.y>-1.08&&projected.y<1.08;entry.button.style.opacity=visible?'1':'0';entry.button.style.pointerEvents=visible?'auto':'none';entry.button.tabIndex=visible?0:-1;if(!visible)continue;const offset=innerWidth<700?(entry.item.mobileOffset||[0,0]):[0,0];const x=(projected.x*.5+.5)*innerWidth+offset[0],y=(-projected.y*.5+.5)*innerHeight-18+offset[1];entry.button.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-100%)`;}}
+  function updateLabels(){
+    if(!labelsVisible)return;
+    const placed=[];
+    for(const entry of labelButtons){
+      projected.copy(entry.item.vector).project(camera);
+      const visible=projected.z>-1&&projected.z<1&&projected.x>-1.08&&projected.x<1.08&&projected.y>-1.08&&projected.y<1.08;
+      entry.button.style.opacity=visible?'1':'0';entry.button.style.pointerEvents=visible?'auto':'none';entry.button.tabIndex=visible?0:-1;
+      if(!visible)continue;
+      const offset=innerWidth<700?(entry.item.mobileOffset||[0,0]):[0,0];
+      const anchorX=(projected.x*.5+.5)*innerWidth,anchorY=(-projected.y*.5+.5)*innerHeight;
+      let x=anchorX+offset[0],y=anchorY-22+offset[1];
+      const w=entry.button.offsetWidth||124,h=entry.button.offsetHeight||32;
+      const collides=(xx,yy)=>placed.some(r=>Math.abs(xx-r.x)<(w+r.w)/2+5&&Math.abs(yy-r.y)<(h+r.h)/2+5);
+      const baseY=y;let attempt=0;
+      while(collides(x,y)&&attempt<7){attempt++;y=baseY+(attempt%2?-1:1)*Math.ceil(attempt/2)*(h+7);if(y<112)y=baseY+attempt*(h+7);}
+      x=Math.max(w/2+8,Math.min(innerWidth-w/2-8,x));y=Math.max(96,Math.min(innerHeight-96,y));
+      const dx=anchorX-x,dy=anchorY-y,length=Math.max(12,Math.hypot(dx,dy)),angle=Math.atan2(-dx,dy);
+      entry.button.style.setProperty('--anchor-dx',`${dx}px`);entry.button.style.setProperty('--anchor-dy',`${dy}px`);
+      entry.button.style.setProperty('--connector-length',`${length}px`);entry.button.style.setProperty('--connector-angle',`${angle}rad`);
+      placed.push({x,y,w,h});entry.button.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-100%)`;
+    }
+  }
   function renderFrame(){controls.update();renderer.render(scene,camera);updateLabels();}
   function animate(now){const dt=Math.min((now-previousTime)/1000,.1);previousTime=now;if(dt>0)frameEMA=frameEMA*.96+dt*.04;frameCount++;if(frameCount%30===0)fps=Math.round(1/Math.max(frameEMA,.001));if(frameCount===180&&frameEMA>.034&&renderer.getPixelRatio()>1){renderer.setPixelRatio(1);renderer.setSize(innerWidth,innerHeight);}renderFrame();}
   function resetCamera(){
     if(currentView==='exterior'){
       camera.fov=innerWidth<700?62:45;if(innerWidth<700)camera.position.set(78,62,80);else camera.position.set(52,41,53);controls.target.set(4,2.1,innerWidth<700?-1:1.5);controls.minDistance=34;controls.maxDistance=132;controls.minPolarAngle=.38;controls.maxPolarAngle=1.38;scene.fog.near=95;scene.fog.far=240;sun.intensity=3;hemi.intensity=2.15;roomLight.visible=false;
+    }else if(currentView==='interior'){
+      camera.fov=innerWidth<700?64:48;
+      if(currentStage==='after'){if(innerWidth<700)camera.position.set(-12.0,16.8,14.2);else camera.position.set(-8.8,14.0,10.8);controls.target.set(-.85,.40,.45);}
+      else{if(innerWidth<700)camera.position.set(13.8,15.0,16.2);else camera.position.set(10.2,11.8,13.2);controls.target.set(0,.55,.85);}
+      controls.minDistance=7;controls.maxDistance=25;controls.minPolarAngle=.20;controls.maxPolarAngle=1.42;scene.fog.near=22;scene.fog.far=70;sun.intensity=1.45;hemi.intensity=1.9;roomLight.visible=true;
     }else{
-      camera.fov=innerWidth<700?62:48;if(innerWidth<700)camera.position.set(8.2,8.2,9.2);else camera.position.set(6.7,6.6,7.6);controls.target.set(0,.65,0);controls.minDistance=4;controls.maxDistance=16;controls.minPolarAngle=.25;controls.maxPolarAngle=1.45;scene.fog.near=16;scene.fog.far=55;sun.intensity=1.45;hemi.intensity=1.9;roomLight.visible=true;
+      camera.fov=innerWidth<700?64:48;if(innerWidth<700)camera.position.set(12.4,13.0,14.6);else camera.position.set(8.4,8.8,10.8);controls.target.set(0,.50,1.0);controls.minDistance=5;controls.maxDistance=21;controls.minPolarAngle=.20;controls.maxPolarAngle=1.45;scene.fog.near=20;scene.fog.far=65;sun.intensity=1.35;hemi.intensity=1.85;roomLight.visible=true;
     }
     camera.updateProjectionMatrix();camera.lookAt(controls.target);controls.update();
   }
   function createLabels(){
     $('labels-layer').replaceChildren();labelButtons=currentItems.map((item)=>{item.vector=new THREE.Vector3(...item.position);const button=document.createElement('button');button.type='button';const labelKind=item.kind==='room'?'room-label':item.kind==='secondary'?'secondary-label':currentView==='exterior'?'feature-label':'detail-label';button.className=`scene-label ${labelKind}`;button.setAttribute('aria-label',`اعرض بطاقة ${item.name}`);button.dataset.item=item.id;const icon=document.createElement('i');icon.setAttribute('data-lucide','bookmark');const text=document.createElement('span');text.textContent=item.name;button.append(icon,text);button.addEventListener('click',()=>showInfo(item.id));$('labels-layer').appendChild(button);return{item,button};});refreshIcons();
   }
+  const AFTER_OBJECTS=['item_divider','item_divider_dots','item_divider_hardware','item_grave_prophet','item_grave_abu_bakr','item_grave_umar'];
+  function applyInteriorStage(){
+    if(!interiorModel)return;
+    const visible=currentStage==='after'&&currentView==='interior';
+    for(const name of AFTER_OBJECTS){const object=interiorModel.getObjectByName(name);if(object)object.visible=visible;}
+  }
+  function syncStageUI(){
+    $('stage-switch').hidden=currentView!=='interior';
+    for(const [id,stage] of [['lifetime-stage','lifetime'],['burial-stage','after']]){$(id).classList.toggle('active',currentStage===stage);$(id).setAttribute('aria-pressed',String(currentStage===stage));}
+  }
+  function interiorEraText(){return currentStage==='after'?'غرفة النوم · بعد الوفاة والدفن':'غرفة النوم · في حياة النبي ﷺ';}
+  function setStage(stage,userInitiated=true){
+    currentStage=stage==='after'?'after':'lifetime';applyInteriorStage();syncStageUI();
+    if(currentView==='interior')currentItems=INTERIOR_ITEMS.filter(item=>item.kind!=='tool'&&(currentStage==='after'||item.stage!=='after'));
+    $('era-text').textContent=currentView==='interior'?interiorEraText():$('era-text').textContent;
+    if(currentView==='interior')resetCamera();closeInfo();createLabels();const url=new URL(location.href);if(currentView==='interior'&&currentStage==='after')url.searchParams.set('stage','after');else url.searchParams.delete('stage');history.replaceState(null,'',url);if(userInitiated)renderFrame();
+  }
   function setView(view,userInitiated=true){
-    currentView=view;document.body.classList.toggle('interior-view',view==='interior');currentItems=view==='exterior'?EXTERIOR_ITEMS:INTERIOR_ITEMS;if(exteriorModel)exteriorModel.visible=view==='exterior';if(interiorModel)interiorModel.visible=view==='interior';ground.visible=view==='exterior';context.visible=view==='exterior';sky.visible=view==='exterior';scene.background=view==='exterior'?horizon:new THREE.Color(0x4b3a29);
-    $('exterior-button').classList.toggle('active',view==='exterior');$('interior-button').classList.toggle('active',view==='interior');$('exterior-button').setAttribute('aria-pressed',String(view==='exterior'));$('interior-button').setAttribute('aria-pressed',String(view==='interior'));
-    $('view-hint').querySelector('span').textContent=view==='exterior'?'اسحب للتدوير · قرّب بعجلة الفأرة · اختر بطاقة للتفاصيل':'اسحب للتدوير فوق الحجرة · قرّب واختر بطاقة فوق أي عنصر';$('era-text').textContent=view==='exterior'?'تصوّر تقريبي · نحو ٧هـ':'النموذج المتحفي · مرحلة لاحقة';closeInfo();resetCamera();createLabels();const url=new URL(location.href);if(view==='interior')url.searchParams.set('view','interior');else url.searchParams.delete('view');history.replaceState(null,'',url);if(userInitiated&&CAPTURE_MODE)renderFrame();
+    if(!['exterior','interior','tools'].includes(view))view='exterior';
+    currentView=view;const inside=view!=='exterior';document.body.classList.toggle('interior-view',inside);
+    currentItems=view==='exterior'?EXTERIOR_ITEMS:view==='tools'?INTERIOR_ITEMS.filter(item=>item.kind==='tool'):INTERIOR_ITEMS.filter(item=>item.kind!=='tool'&&(currentStage==='after'||item.stage!=='after'));
+    if(exteriorModel)exteriorModel.visible=!inside;if(interiorModel)interiorModel.visible=inside;ground.visible=!inside;context.visible=!inside;sky.visible=!inside;scene.background=inside?new THREE.Color(0x4b3a29):horizon;applyInteriorStage();syncStageUI();
+    for(const [id,name] of [['exterior-button','exterior'],['interior-button','interior'],['tools-button','tools']]){$(id).classList.toggle('active',view===name);$(id).setAttribute('aria-pressed',String(view===name));}
+    $('view-hint').querySelector('span').textContent=view==='exterior'?'اسحب للتدوير · قرّب بعجلة الفأرة · اختر بطاقة للتفاصيل':view==='tools'?'أدوات المجلس وغرفة النوم · اختر أي تسمية لقراءة بطاقتها':'مجلس وغرفة نوم · بدّل مرحلة غرفة النوم من الأزرار العلوية';
+    $('era-text').textContent=view==='exterior'?'تصوّر المسجد والحُجُرات · نحو ٧هـ':view==='tools'?'أدوات البيت · المجلس وغرفة النوم':interiorEraText();
+    closeInfo();resetCamera();createLabels();const url=new URL(location.href);if(inside)url.searchParams.set('view',view);else url.searchParams.delete('view');if(view==='interior'&&currentStage==='after')url.searchParams.set('stage','after');else url.searchParams.delete('stage');history.replaceState(null,'',url);if(userInitiated&&CAPTURE_MODE)renderFrame();
   }
   function showInfo(id){const item=ALL_ITEMS.find((entry)=>entry.id===id);if(!item)return;selectedItemId=id;$('info-title').textContent=item.name;$('info-description').textContent=item.description;$('info-source').textContent=item.source;$('info-note').hidden=!item.note;$('info-note').textContent=item.note||'';$('info-panel').hidden=false;labelButtons.forEach((entry)=>entry.button.classList.toggle('selected',entry.item.id===id));refreshIcons();}
   function closeInfo(){selectedItemId=null;$('info-panel').hidden=true;labelButtons.forEach((entry)=>entry.button.classList.remove('selected'));}
   function objectMatches(object,item){return[item.object,...(item.alternateObjects||[])].some((name)=>object.name===name||object.name.startsWith(`${name}_`));}
-  function pickObject(event){if(Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)>6)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);raycaster.setFromCamera(pointer,camera);const model=currentView==='exterior'?exteriorModel:interiorModel;if(!model)return;for(const hit of raycaster.intersectObject(model,true)){let object=hit.object;while(object){const item=currentItems.find((entry)=>objectMatches(object,entry));if(item){showInfo(item.id);return;}object=object.parent;}}}
+  function pickObject(event){if(Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)>6)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);raycaster.setFromCamera(pointer,camera);const model=currentView==='exterior'?exteriorModel:interiorModel;if(!model)return;const pickableItems=currentView==='exterior'?EXTERIOR_ITEMS:INTERIOR_ITEMS.filter(item=>currentStage==='after'||item.stage!=='after');for(const hit of raycaster.intersectObject(model,true)){let object=hit.object;while(object){const item=pickableItems.find((entry)=>objectMatches(object,entry));if(item){showInfo(item.id);return;}object=object.parent;}}}
   renderer.domElement.addEventListener('pointerdown',(event)=>{pointerStart={x:event.clientX,y:event.clientY};});renderer.domElement.addEventListener('pointerup',pickObject);
   controls.addEventListener('change',()=>{if(CAPTURE_MODE){renderer.render(scene,camera);updateLabels();}});
-  $('exterior-button').addEventListener('click',()=>setView('exterior'));$('interior-button').addEventListener('click',()=>setView('interior'));$('reset-button').addEventListener('click',()=>{resetCamera();renderFrame();});
+  $('exterior-button').addEventListener('click',()=>setView('exterior'));$('interior-button').addEventListener('click',()=>setView('interior'));$('tools-button').addEventListener('click',()=>setView('tools'));$('lifetime-stage').addEventListener('click',()=>setStage('lifetime'));$('burial-stage').addEventListener('click',()=>setStage('after'));$('reset-button').addEventListener('click',()=>{resetCamera();renderFrame();});
   $('labels-toggle').addEventListener('click',()=>{labelsVisible=!labelsVisible;$('labels-layer').hidden=!labelsVisible;$('labels-toggle').setAttribute('aria-pressed',String(labelsVisible));$('labels-toggle').setAttribute('aria-label',labelsVisible?'إخفاء البطاقات':'إظهار البطاقات');});
   $('info-close').addEventListener('click',closeInfo);$('about-button').addEventListener('click',()=>$('about-dialog').showModal());
   document.querySelectorAll('[data-close]').forEach((button)=>button.addEventListener('click',()=>$(button.dataset.close).close()));document.querySelectorAll('dialog').forEach((dialog)=>dialog.addEventListener('click',(event)=>{if(event.target===dialog)dialog.close();}));document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&!$('info-panel').hidden)closeInfo();});
   addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=currentView==='exterior'?(innerWidth<700?62:45):(innerWidth<700?62:48);camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderFrame();});
-  window.__SCENE_READY__=false;window.__seek=()=>renderFrame();window.__play=()=>{};window.__setView=(view)=>{setView(view);renderFrame();};window.__selectItem=(id)=>{showInfo(id);renderFrame();};window.__getMetrics=()=>({view:currentView,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,fps,pixelRatio:renderer.getPixelRatio(),labels:labelButtons.length,selectedItemId});
+  window.__SCENE_READY__=false;window.__seek=()=>renderFrame();window.__play=()=>{};window.__setView=(view)=>{setView(view);renderFrame();};window.__setStage=(stage)=>{setStage(stage);renderFrame();};window.__selectItem=(id)=>{showInfo(id);renderFrame();};window.__getMetrics=()=>({view:currentView,stage:currentStage,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,fps,pixelRatio:renderer.getPixelRatio(),labels:labelButtons.length,selectedItemId});
   setupQuiz();loadModels();
 }
 

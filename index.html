@@ -31,6 +31,11 @@
       </nav>
     </header>
     <div class="era-note"><span class="status-dot"></span><span id="era-text">تصوّر تقريبي · نحو ٧هـ</span></div>
+    <div id="stage-switch" class="stage-switch" role="group" aria-label="مرحلة غرفة النوم" hidden>
+      <span>غرفة النوم</span>
+      <button id="lifetime-stage" class="active" type="button" aria-pressed="true">في حياة النبي ﷺ</button>
+      <button id="burial-stage" type="button" aria-pressed="false">بعد الوفاة والدفن</button>
+    </div>
     <aside id="info-panel" class="info-panel" aria-live="polite" aria-label="البطاقة التعريفية" hidden>
       <button id="info-close" class="icon-button panel-close" type="button" aria-label="إغلاق البطاقة"><i data-lucide="x"></i></button>
       <div class="panel-kicker"><i data-lucide="bookmark"></i>بطاقة تعريفية</div>
@@ -42,6 +47,7 @@
     <nav class="mode-dock" aria-label="التنقل بين أجزاء المجسم">
       <button id="exterior-button" class="mode-button active" type="button" aria-pressed="true"><i data-lucide="landmark"></i><span>المشهد العام</span></button>
       <button id="interior-button" class="mode-button" type="button" aria-pressed="false"><i data-lucide="door-open"></i><span>دخول الحجرة</span></button>
+      <button id="tools-button" class="mode-button" type="button" aria-pressed="false"><i data-lucide="utensils"></i><span>الأدوات</span></button>
       <span class="dock-divider" aria-hidden="true"></span>
       <button id="reset-button" class="mode-icon" type="button" aria-label="إعادة الكاميرا" title="إعادة الكاميرا"><i data-lucide="rotate-ccw"></i></button>
     </nav>
@@ -57,7 +63,7 @@
     <div class="panel-kicker"><i data-lucide="scroll-text"></i>منهج العرض</div>
     <h2 id="about-title">تصوّر تعليمي، لا مطابقة أثرية</h2>
     <p>يمثّل المشهد ملامح عامة للمسجد في العهد النبوي بعد التوسعة: جدران من اللبن، وصحن مكشوف، وظلال تحملها جذوع النخل ويغطيها السعف، وحُجُرات مسماة حول المسجد لكل منها فناء وسياج بسيط. لا تظهر فيه القبة أو المآذن أو الزخارف اللاحقة.</p>
-    <div class="about-callout"><i data-lucide="triangle-alert"></i><p>أسماء الحُجُرات وملامح الأفنية والأسوار مستلهمة من الصور المرجعية التي أرفقها المستخدم، أما المقاسات والتوزيع الدقيق وشكل بعض الأدوات فتقريبية. الحجرة الداخلية تتبع النموذج المتحفي المرفق وتضم مواضع القبور؛ لذلك تمثل مرحلة لاحقة لوفاة النبي ﷺ ودفن أبي بكر وعمر رضي الله عنهما، وليست هيئة الحجرة في سنة ٧هـ. ولا يُقصد بالمجسم تحديد قاطع لكل ما في حجرة عائشة رضي الله عنها.</p></div>
+    <div class="about-callout"><i data-lucide="triangle-alert"></i><p>أُعيد توزيع الحُجُرات والأحواش وفق المخطط المرجعي. ويتكون البيت الداخلي من مجلس وغرفة نوم، وتعرض غرفة النوم مرحلتين: في حياة النبي ﷺ بلا قبور، ثم بعد وفاته ودفنه ودفن أبي بكر وعمر رضي الله عنهما مع ستار يفصل القبور عن مكان النوم. تقدَّم تربة قبر النبي ﷺ على القبرين الآخرين وتختلف الارتفاعات والأطوال كما في النموذج المرجعي. وتبقى المقاسات والتفاصيل الدقيقة تصوّرًا تعليميًا لا مطابقة أثرية.</p></div>
     <h3>أبرز الأسانيد النصية</h3>
     <ul class="reference-list">
       <li><strong>سنن أبي داود ٤٥١–٤٥٢</strong><span>اللبن وسعف النخل وجذوعه في بناء المسجد.</span></li>

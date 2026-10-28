@@ -1,6 +1,4 @@
 node_modules/
 dist/
-*.local
+verification-shots/
 *.log
-*.blend1
-.DS_Store
