@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#24352f">
+  <meta name="description" content="مجسم تفاعلي تعليمي للمسجد النبوي والحجرات في العهد النبوي، مع بطاقات تعريفية واختبار.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2324352f'/%3E%3Cpath d='M15 51V30C15 15 23 9 32 9s17 6 17 21v21M23 51V31c0-9 4-14 9-14s9 5 9 14v20M11 51h42' fill='none' stroke='%23e7d8b9' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <title>في رحاب العهد النبوي | مجسم تفاعلي</title>
+</head>
+<body>
+  <main id="app" aria-label="مجسم المسجد والحجرات في العهد النبوي">
+    <div id="scene-container" aria-label="مشهد ثلاثي الأبعاد تفاعلي"></div>
+    <div id="labels-layer" aria-label="بطاقات عناصر المشهد"></div>
+    <header class="topbar">
+      <div class="brand" aria-label="في رحاب العهد النبوي">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M7 34V19C7 10 13 5 20 5s13 5 13 14v15M12 34V20c0-6 3-10 8-10s8 4 8 10v14M4 34h32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20 2v4M17 3h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <div><h1>في رحاب العهد النبوي</h1><p>المسجد والحُجُرات · تصوّر تعليمي</p></div>
+      </div>
+      <nav class="top-actions" aria-label="أدوات التجربة">
+        <button id="labels-toggle" class="icon-button" type="button" aria-label="إخفاء البطاقات" aria-pressed="true" title="إظهار أو إخفاء البطاقات"><i data-lucide="tags"></i></button>
+        <button id="about-button" class="button button-quiet" type="button"><i data-lucide="info"></i><span>عن التصوّر</span></button>
+        <button id="quiz-button" class="button button-primary" type="button"><i data-lucide="circle-help"></i><span>اختبر معرفتك</span></button>
+      </nav>
+    </header>
+    <div class="era-note"><span class="status-dot"></span><span id="era-text">تصوّر تقريبي · نحو ٧هـ</span></div>
+    <aside id="info-panel" class="info-panel" aria-live="polite" aria-label="البطاقة التعريفية" hidden>
+      <button id="info-close" class="icon-button panel-close" type="button" aria-label="إغلاق البطاقة"><i data-lucide="x"></i></button>
+      <div class="panel-kicker"><i data-lucide="bookmark"></i>بطاقة تعريفية</div>
+      <h2 id="info-title"></h2><p id="info-description"></p>
+      <div id="info-note" class="info-note" hidden></div>
+      <div class="source-line"><i data-lucide="book-open"></i><div><span>المرجع أو وجه الاستناد</span><strong id="info-source"></strong></div></div>
+    </aside>
+    <div class="view-hint" id="view-hint"><i data-lucide="mouse-pointer-2"></i><span>اسحب للتدوير · قرّب بعجلة الفأرة · اختر بطاقة للتفاصيل</span></div>
+    <nav class="mode-dock" aria-label="التنقل بين أجزاء المجسم">
+      <button id="exterior-button" class="mode-button active" type="button" aria-pressed="true"><i data-lucide="landmark"></i><span>المشهد العام</span></button>
+      <button id="interior-button" class="mode-button" type="button" aria-pressed="false"><i data-lucide="door-open"></i><span>دخول الحجرة</span></button>
+      <span class="dock-divider" aria-hidden="true"></span>
+      <button id="reset-button" class="mode-icon" type="button" aria-label="إعادة الكاميرا" title="إعادة الكاميرا"><i data-lucide="rotate-ccw"></i></button>
+    </nav>
+    <div id="loading-screen" role="status" aria-live="polite">
+      <div class="loading-landscape" aria-hidden="true"><span class="loading-wall"></span><span class="loading-door"></span><span class="loading-palm palm-one"></span><span class="loading-palm palm-two"></span></div>
+      <div class="loading-copy"><span class="loading-kicker">مجسم تفاعلي</span><h2>في رحاب العهد النبوي</h2><p id="loading-text">يُبنى المشهد وتهيأ البطاقات…</p><div class="loading-track"><span id="loading-progress"></span></div></div>
+    </div>
+    <div id="webgl-error" class="error-state" hidden><h2>تعذّر تشغيل المشهد</h2><p>تحتاج التجربة إلى متصفح يدعم WebGL. جرّب تحديث المتصفح أو فتحها على جهاز آخر.</p></div>
+  </main>
+  <dialog id="quiz-dialog" class="dialog quiz-dialog" aria-labelledby="quiz-title"><button class="icon-button dialog-close" type="button" data-close="quiz-dialog" aria-label="إغلاق الاختبار"><i data-lucide="x"></i></button><div id="quiz-content"></div></dialog>
+  <dialog id="about-dialog" class="dialog about-dialog" aria-labelledby="about-title">
+    <button class="icon-button dialog-close" type="button" data-close="about-dialog" aria-label="إغلاق"><i data-lucide="x"></i></button>
+    <div class="panel-kicker"><i data-lucide="scroll-text"></i>منهج العرض</div>
+    <h2 id="about-title">تصوّر تعليمي، لا مطابقة أثرية</h2>
+    <p>يمثّل المشهد ملامح عامة للمسجد في العهد النبوي بعد التوسعة: جدران من اللبن، وصحن مكشوف، وظلال تحملها جذوع النخل ويغطيها السعف، وحُجُرات مسماة حول المسجد لكل منها فناء وسياج بسيط. لا تظهر فيه القبة أو المآذن أو الزخارف اللاحقة.</p>
+    <div class="about-callout"><i data-lucide="triangle-alert"></i><p>أسماء الحُجُرات وملامح الأفنية والأسوار مستلهمة من الصور المرجعية التي أرفقها المستخدم، أما المقاسات والتوزيع الدقيق وشكل بعض الأدوات فتقريبية. الحجرة الداخلية تتبع النموذج المتحفي المرفق وتضم مواضع القبور؛ لذلك تمثل مرحلة لاحقة لوفاة النبي ﷺ ودفن أبي بكر وعمر رضي الله عنهما، وليست هيئة الحجرة في سنة ٧هـ. ولا يُقصد بالمجسم تحديد قاطع لكل ما في حجرة عائشة رضي الله عنها.</p></div>
+    <h3>أبرز الأسانيد النصية</h3>
+    <ul class="reference-list">
+      <li><strong>سنن أبي داود ٤٥١–٤٥٢</strong><span>اللبن وسعف النخل وجذوعه في بناء المسجد.</span></li>
+      <li><strong>صحيح البخاري ٦٤٥٦</strong><span>فراش من أدم محشو بليف النخل.</span></li>
+      <li><strong>جامع الترمذي ٢٤٦٩</strong><span>مسند من أدم محشو بليف النخل.</span></li>
+      <li><strong>صحيح البخاري ٤٩١٣</strong><span>الحصير والمسند والقِرَب في رواية وصف المضجع.</span></li>
+    </ul>
+    <h3>ملفات المجسم</h3>
+    <div class="download-links"><a class="button button-quiet" href="./models/exterior.glb" download="المسجد-والحجرات.glb"><i data-lucide="download"></i>المشهد العام GLB</a><a class="button button-quiet" href="./models/interior.glb" download="الحجرة-الداخلية.glb"><i data-lucide="download"></i>الحجرة GLB</a></div>
+    <p class="local-note">تعمل التجربة دون حساب، ولا تُحفظ نتيجة الاختبار بعد إغلاق الصفحة.</p>
+  </dialog>
+  <script type="module" src="./src/scene.js"></script>
+</body>
+</html>
