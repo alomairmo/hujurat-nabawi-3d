@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const modelPaths=(name,count)=>Array.from({length:count},(_,index)=>`./models/${name}.glb.${String(index).padStart(2,'0')}.b64`);
+const MODEL_ROOT=import.meta.env?'./models':'./public/models';
+const modelPaths=(name,count)=>Array.from({length:count},(_,index)=>`${MODEL_ROOT}/${name}.glb.${String(index).padStart(2,'0')}.b64`);
 const MODEL_URLS={water_jar:modelPaths('jar',8),quern:modelPaths('quern',5),basket:modelPaths('basket',8)};
 
 async function loadEmbeddedModel(loader,urls){
@@ -18,7 +19,7 @@ async function loadEmbeddedModel(loader,urls){
 function normalizeAsset(object,targetHeight){
   object.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(object),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-  if(!Number.isFinite(size.y)||size.y<=0)throw new Error('المجسم المخصص بلا أبعاد صالحة');
+  if(!Number.isFinite(size.y)||s.y<=0)throw new Error('المجسم المخصص بلا أبعاد صالحة');
   object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));
   const wrapper=new THREE.Group();wrapper.add(object);wrapper.scale.setScalar(targetHeight/size.y);
   wrapper.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
