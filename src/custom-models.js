@@ -1,16 +1,14 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const MODEL_URLS={
-  water_jar:new URL('./assets/jar.glb.b64',import.meta.url).href,
-  quern:new URL('./assets/quern.glb.b64',import.meta.url).href,
-  basket:new URL('./assets/basket.glb.b64',import.meta.url).href
-};
+const modelPaths=(name,count)=>Array.from({length:count},(_,index)=>`./models/${name}.glb.${String(index).padStart(2,'0')}.b64`);
+const MODEL_URLS={water_jar:modelPaths('jar',8),quern:modelPaths('quern',5),basket:modelPaths('basket',8)};
 
-async function loadEmbeddedModel(loader,url){
-  const response=await fetch(url);
-  if(!response.ok)throw new Error(`تعذر تحميل النموذج المخصص: ${response.status}`);
-  const encoded=(await response.text()).replace(/\s/g,'');
+async function loadEmbeddedModel(loader,urls){
+  const responses=await Promise.all(urls.map(url=>fetch(url)));
+  responses.forEach(response=>{if(!response.ok)throw new Error(`تعذر تحميل النموذج المخصص: ${response.status}`);});
+  const parts=await Promise.all(responses.map(response=>response.text()));
+  const encoded=parts.join('').replace(/\s/g,'');
   const binary=atob(encoded),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   const gltf=await loader.parseAsync(bytes.buffer,'');
