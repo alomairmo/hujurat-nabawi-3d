@@ -8,7 +8,8 @@ const MATERIAL_COLORS = {
   clay:[.52,.25,.12], clay_light:[.65,.36,.18], clay_dark:[.25,.14,.09], metal:[.34,.38,.36],
   sant:[.25,.29,.11], shadow:[.045,.032,.022], fabric_red:[.34,.045,.068], fabric_dark:[.035,.028,.024],
   fabric_cream:[.82,.73,.54], shell:[.88,.81,.65], grave_earth:[.43,.30,.18], door:[.20,.10,.045],
-  stone:[.47,.46,.40], stone_light:[.61,.59,.50], wool:[.33,.19,.09]
+  stone:[.47,.46,.40], stone_light:[.61,.59,.50], wool:[.33,.19,.09],
+  field:[.25,.31,.12], water:[.12,.25,.23]
 };
 const materials = Object.fromEntries(Object.entries(MATERIAL_COLORS).map(([name,color]) => [
   name,new THREE.MeshStandardMaterial({color:new THREE.Color(...color),roughness:name==='metal'?.58:.94,metalness:name==='metal'?.42:0,side:THREE.DoubleSide})
@@ -155,26 +156,70 @@ function northUnit(groups,id,x){
   palisade(groups,group,[x+4.48,18.3,0],[x+4.48,22.02,0]);palisade(groups,group,[x+2.3,22.02,0],[x+4.48,22.02,0]);palisade(groups,group,[x+3.48,18.3,0],[x+4.48,18.3,0]);
 }
 
+function grovePalm(groups,group,x,y,h=5.4){
+  const b=groups[group]??=new Builder(),lean=range(-.12,.12);
+  b.cylinder([x,y,0],[x+lean,y,h],.17,'palm',7,.10);
+  for(let k=0;k<10;k++){
+    const a=k*Math.PI*2/10+range(-.12,.12),length=range(1.65,2.45),side=new THREE.Vector3(-Math.sin(a),Math.cos(a),0);
+    const base=new THREE.Vector3(x+lean,y,h),mid=base.clone().add(new THREE.Vector3(Math.cos(a)*length*.48,Math.sin(a)*length*.48,.32));
+    const tip=base.clone().add(new THREE.Vector3(Math.cos(a)*length,Math.sin(a)*length,range(-.85,-.35))),width=range(.23,.36);
+    b.add([base,mid.clone().addScaledVector(side,width),tip,mid.clone().addScaledVector(side,-width)],[[0,1,2],[0,2,3]],choose(['leaf','leaf_light']));
+    b.cylinder(base,tip,.018,'palm_light',4,.005);
+  }
+}
+function cityHouse(B,x,y){
+  const w=range(3.25,4.55),d=range(3.0,4.35),h=range(1.75,2.75),mat=tone();
+  B.box([x,y,h/2],[w,d,h],mat);B.box([x,y,h+.045],[w+.12,d+.12,.16],'mud_light');
+  for(const yy of [y-d/2,y+d/2])B.box([x,yy,h+.18],[w+.12,.14,.28],mat);
+  for(const xx of [x-w/2,x+w/2])B.box([xx,y,h+.18],[.14,d,.28],mat);
+  B.box([x+w*.18,y-d/2-.022,.64],[.68,.055,1.28],'door');
+  if(random()<.42){const side=random()<.5?-1:1;B.box([x+side*(w/2+1.05),y,.43],[.18,d+1.3,.86],'mud');B.box([x+side*(w/2+.55),y+d/2+.55,.43],[1.35,.18,.86],'mud_light');}
+  if(random()<.36)for(let i=0;i<3;i++){const xx=x-w*.34+i*w*.34;B.cylinder([xx,y-d/2-.14,h-.08],[xx,y+d/2+.14,h-.08],.035,'palm',5);}
+}
+function garden(groups,x,y,w,d){
+  const B=groups.gardens??=new Builder();B.box([x,y,.025],[w,d,.05],'field');
+  for(const yy of [y-d/2,y+d/2])B.box([x,yy,.36],[w+.25,.22,.72],'mud');
+  for(const xx of [x-w/2,x+w/2])B.box([xx,y,.36],[.22,d,.72],'mud_light');
+  for(let row=0;row<5;row++){const xx=x-w*.38+row*w*.19;B.box([xx,y,.09],[.48,d*.82,.12],row%2?'leaf':'leaf_light');}
+  B.box([x+w/2+.48,y,.035],[.42,d+1.1,.07],'water');
+  for(const xx of [x+w/2+.17,x+w/2+.79])B.box([xx,y,.12],[.15,d+1.2,.24],'mud_dark');
+  for(let row=0;row<3;row++)for(let col=0;col<4;col++)grovePalm(groups,'garden_palms',x-w*.34+col*w*.225,y-d*.32+row*d*.32,range(4.5,6.0));
+}
 export function createExteriorModel(){
   seed=622;const g={},B=name=>g[name]??=new Builder();
-  B('scene_base').box([2,2,-.34],[63,61,.64],'sand');B('scene_base').box([0,0,.015],[36,32,.12],'earth');
+  B('scene_base').box([0,0,-.34],[130,122,.64],'sand');B('scene_base').box([0,0,.015],[36,32,.12],'earth');
+  for(const [x,y,w,d] of [[-30,0,3.2,111],[31,0,3.0,111],[0,30,112,3.0],[0,-30,112,3.0],[-48,0,2.0,91],[48,0,2.0,91]])B('city_paths').box([x,y,.025],[w,d,.05],'earth');
   brickWall(g,'mosque_walls',[0,-16,0],36,4.0,.62,'X');brickWall(g,'mosque_walls',[0,16,0],36,4.0,.62,'X',[0,1.8,2.4]);
   brickWall(g,'mosque_walls',[-18,0,0],32,4.0,.62,'Y',[0,1.8,2.4]);brickWall(g,'mosque_walls',[18,0,0],32,4.0,.62,'Y',[-6.3,1.25,2.15]);
   doorLeaf(B('mosque_walls'),0,16.28,.02,1.55,2.35);doorLeaf(B('mosque_walls'),-18.28,0,.02,1.55,2.35,'Y');
   const zones=[{name:'south',rows:[-14.7,-10.9,-7.1],center:-10.9,depth:9.2,height:3.75},{name:'north',rows:[14.6,11.6],center:13.2,depth:5.5,height:3.5}];
   for(const zone of zones){
     for(const y of zone.rows)for(const x of [-15,-11,-7,-3,1,5,9,13,16]){if(zone.name==='north'&&x>13)continue;B('palm_columns').cylinder([x,y,0],[x,y,zone.height],.18,'palm',11,.14);for(const z of [zone.height-.28,zone.height-.20])B('palm_columns').torus([x,y,z],.18,.025,'rope','Z',12,5);}
-    roof(B('palm_roofs'),0,zone.center,35.5,zone.depth,zone.height+.12);
-    for(let i=0;i<54;i++){const x=-17.3+i*.65;B('palm_roofs').cylinder([x,zone.center-zone.depth/2,zone.height+.24],[x,zone.center+zone.depth/2,zone.height+.24],.027,'woven',5);}
+    B('palm_roofs').box([0,zone.center,zone.height+.12],[35.5,zone.depth,.16],'woven');
+    for(let i=0;i<70;i++){const x=-17.4+i*.50;B('palm_roofs').cylinder([x,zone.center-zone.depth/2,zone.height+.24],[x,zone.center+zone.depth/2,zone.height+.24],.033,i%4?'woven_light':'palm_light',5);}
+    for(let i=0;i<24;i++){const y=zone.center-zone.depth/2+(i+.5)*zone.depth/24;B('palm_roofs').cylinder([-17.6,y,zone.height+.29],[17.6,y,zone.height+.29],.025,'woven',5);}
   }
   for(let i=0;i<3;i++)B('minbar').box([-4.5,-14.7+i*.36,.16+i*.19],[1.18,.42,.32+i*.38],'wood');
   for(const x of [-5.02,-3.98])B('minbar').cylinder([x,-15,.18],[x,-13.8,1.25],.05,'wood');
   const east=[['sawda',-12.6],['aisha',-6.3],['hafsa',0],['umm_salama',6.3],['zaynab_jahsh',12.6]];
   const north=[['zaynab_khuzayma',-10.2],['umm_habiba',-3.4],['safiyya',3.4],['fatima_ali',10.2]];
   east.forEach(([id,y])=>eastUnit(g,id,y));north.forEach(([id,x])=>northUnit(g,id,x));
-  const palmSites=[[-23,-17],[-24,-7],[-24,5],[-22,17],[-16,26],[-7,26],[2,27],[12,27],[22,25],[28,19],[29,10],[29,1],[29,-8],[27,-18],[18,-22],[8,-23],[-3,-23],[-14,-23]];
+  const plots=[[-42,33,14,11],[42,33,14,11],[-42,-34,15,11],[42,-34,15,11]];
+  for(let gx=-9;gx<=9;gx++)for(let gy=-8;gy<=8;gy++){
+    const x=gx*5.25+range(-.42,.42),y=gy*5.15+range(-.42,.42);
+    if(x>-26&&x<29&&y>-26&&y<27)continue;
+    if(Math.abs(x+30)<3.1||Math.abs(x-31)<3||Math.abs(y-30)<3||Math.abs(y+30)<3||Math.abs(x+48)<2.3||Math.abs(x-48)<2.3)continue;
+    if(plots.some(([px,py,pw,pd])=>Math.abs(x-px)<pw/2+2.7&&Math.abs(y-py)<pd/2+2.7))continue;
+    if(random()<.17)continue;cityHouse(B('city_houses'),x,y);
+  }
+  plots.forEach(args=>garden(g,...args));
+  const palmSites=[[-23,-17],[-24,-7],[-24,5],[-22,17],[-16,26],[-7,26],[12,27],[22,25],[29,10],[29,-8],[18,-22],[-14,-23]];
   palmSites.forEach(([x,y],i)=>palm(g,'date_palms',x,y,5.4+(i%4)*.34));
-  for(let i=0;i<70;i++){const x=range(-28,30),y=random()<.5?range(24,29):range(-25,-20),s=range(.06,.18);B('scene_base').sphere([x,y,s*.3],[s,s*.72,s*.38],'mud_dark',8,4);}
+  for(let i=0;i<108;i++){
+    const a=i*Math.PI*2/108+range(-.025,.025),rx=range(53,61),ry=range(47,55),x=Math.cos(a)*rx,y=Math.sin(a)*ry;
+    grovePalm(g,'palm_groves',x,y,range(4.8,7.0));
+  }
+  for(let i=0;i<80;i++){const x=range(-52,52),y=random()<.5?range(43,48):range(-45,-40),s=range(.05,.16);B('scene_base').sphere([x,y,s*.3],[s,s*.72,s*.38],'mud_dark',7,4);}
   return flush(g);
 }
 
