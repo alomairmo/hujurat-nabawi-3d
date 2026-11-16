@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createExteriorModel, createInteriorModel } from './procedural-models.js';
-import { createIcons, Tags, Info, CircleHelp, X, Bookmark, BookOpen, MousePointer2, Landmark, DoorOpen, RotateCcw, ScrollText, TriangleAlert, Download, ArrowLeft, RotateCw, Award, Utensils } from 'lucide';
+import { createIcons, ICONS } from './icons.js';
 import { EXTERIOR_ITEMS, INTERIOR_ITEMS, QUIZ_QUESTIONS } from './content.js';
 
-const ICONS={Tags,Info,CircleHelp,X,Bookmark,BookOpen,MousePointer2,Landmark,DoorOpen,RotateCcw,ScrollText,TriangleAlert,Download,ArrowLeft,RotateCw,Award,Utensils};
 const refreshIcons=()=>createIcons({icons:ICONS,attrs:{'aria-hidden':'true'}});
 refreshIcons();
 const $=(id)=>document.getElementById(id);
