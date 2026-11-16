@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createExteriorModel, createInteriorModel } from './procedural-models.js';
-import { addCustomModels } from './custom-models.js';
 import { createIcons, Tags, Info, CircleHelp, X, Bookmark, BookOpen, MousePointer2, Landmark, DoorOpen, RotateCcw, ScrollText, TriangleAlert, Download, ArrowLeft, RotateCw, Award, Utensils } from 'lucide';
 import { EXTERIOR_ITEMS, INTERIOR_ITEMS, QUIZ_QUESTIONS } from './content.js';
 
@@ -14,15 +13,15 @@ const CAPTURE_MODE=params.has('capture');
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ALL_ITEMS=[...EXTERIOR_ITEMS,...INTERIOR_ITEMS];
 let currentView='exterior',currentStage=params.get('stage')==='after'?'after':'lifetime',selectedItemId=null,labelsVisible=true,currentItems=EXTERIOR_ITEMS;
-let exteriorModel=null,interiorModel=null,labelButtons=[],renderer;
+let exteriorModel=null,interiorModel=null,interiorPromise=null,labelButtons=[],renderer;
 function mulberry32(a){return function(){a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
 const rand=mulberry32(622);
-try{renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'});}catch(error){console.error('WebGL initialization failed',error);$('loading-screen').hidden=true;$('webgl-error').hidden=false;}
+try{renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:CAPTURE_MODE,powerPreference:'high-performance'});}catch(error){console.error('WebGL initialization failed',error);$('loading-screen').hidden=true;$('webgl-error').hidden=false;}
 if(renderer)startExperience();
 
 function startExperience(){
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;renderer.outputColorSpace=THREE.SRGBColorSpace;
   $('scene-container').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','مجسم ثلاثي الأبعاد؛ استخدم الأزرار والبطاقات للتنقل');
   const scene=new THREE.Scene(),horizon=new THREE.Color(0xd9c59f);scene.background=horizon;scene.fog=new THREE.Fog(horizon,85,220);
@@ -36,21 +35,38 @@ function startExperience(){
   const fill=new THREE.DirectionalLight(0xb9d4d5,.65);fill.position.set(30,18,-25);scene.add(fill);
   const roomLight=new THREE.PointLight(0xffd49a,12,9,1.8);roomLight.position.set(0,2.3,.3);roomLight.visible=false;scene.add(roomLight);
   const ground=new THREE.Mesh(new THREE.CircleGeometry(390,72).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:0xa88758,roughness:1}));ground.position.y=-.69;ground.receiveShadow=true;scene.add(ground);
-  const context=new THREE.Group(),contextGeometry=new THREE.BoxGeometry(1,1,1),contextMaterial=new THREE.MeshStandardMaterial({color:0x9a7a50,roughness:1});
-  const contextMesh=new THREE.InstancedMesh(contextGeometry,contextMaterial,46),matrix=new THREE.Matrix4(),position=new THREE.Vector3(),quaternion=new THREE.Quaternion(),scale=new THREE.Vector3();
-  for(let i=0;i<46;i++){const angle=(i/46)*Math.PI*2+rand()*.12,radius=62+rand()*92,h=2+rand()*4.5;position.set(Math.cos(angle)*radius,h/2-.62,Math.sin(angle)*radius);scale.set(4+rand()*8,h,4+rand()*8);matrix.compose(position,quaternion,scale);contextMesh.setMatrixAt(i,matrix);}context.add(contextMesh);scene.add(context);
+  const context=new THREE.Group();scene.add(context);
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();
   let pointerStart={x:0,y:0},frameEMA=1/60,previousTime=performance.now(),frameCount=0,fps=60;
   function configureModel(model,isInterior){model.traverse((object)=>{if(!object.isMesh)return;object.castShadow=!object.name.startsWith('scene_base')&&!object.name.startsWith('room_architecture');object.receiveShadow=true;if(object.material)object.material.roughness=Math.max(object.material.roughness||0,.82);});model.visible=!isInterior;scene.add(model);}
   function setLoading(percent,text){$('loading-progress').style.width=`${percent}%`;if(text)$('loading-text').textContent=text;}
+  async function ensureInterior(){
+    if(interiorModel)return;
+    if(interiorPromise)return interiorPromise;
+    interiorPromise=(async()=>{
+      setLoading(38,'تُجهّز الحجرة عند دخولها…');await new Promise(requestAnimationFrame);interiorModel=createInteriorModel();
+      setLoading(68,'تُحمّل الرحى والسلة والزير المخصصة…');const {addCustomModels}=await import('./custom-models.js');await addCustomModels(interiorModel);configureModel(interiorModel,true);applyInteriorStage();
+    })().catch(error=>{interiorPromise=null;throw error;});
+    return interiorPromise;
+  }
+  function finishLoading(){
+    setLoading(100,'اكتمل المشهد');
+    if(CAPTURE_MODE)$('loading-screen').hidden=true;else{$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;},reducedMotion?0:260);}
+  }
+  async function selectView(view,userInitiated=true){
+    if(view!=='exterior'&&!interiorModel){
+      if(userInitiated){$('loading-screen').hidden=false;$('loading-screen').classList.remove('loaded');setLoading(24,'تُجهّز الحجرة وأدواتها…');}
+      try{await ensureInterior();}catch(error){console.error('Interior loading failed',error);$('loading-text').textContent='تعذّر تحميل الحجرة. أعد المحاولة.';return;}
+    }
+    setView(view,userInitiated);if(userInitiated)finishLoading();
+  }
   async function loadModels(){
     try{
-      setLoading(18,'تُبنى معالم المسجد والحُجُرات…');await new Promise(requestAnimationFrame);exteriorModel=createExteriorModel();configureModel(exteriorModel,false);
-      setLoading(52,'تُجهّز الحجرة وأدواتها…');await new Promise(requestAnimationFrame);interiorModel=createInteriorModel();
-      setLoading(70,'تُحمّل الرحى والسلة والزير المخصصة…');await addCustomModels(interiorModel);configureModel(interiorModel,true);
-      setLoading(88,'تُرتّب البطاقات التعريفية…');const requestedView=['interior','tools'].includes(params.get('view'))?params.get('view'):'exterior';setView(requestedView,false);renderFrame();setLoading(100,'اكتمل المشهد');
+      setLoading(24,'تُبنى المدينة والمسجد والبساتين…');await new Promise(requestAnimationFrame);exteriorModel=createExteriorModel();configureModel(exteriorModel,false);
+      const requestedView=['interior','tools'].includes(params.get('view'))?params.get('view'):'exterior';if(requestedView!=='exterior')await ensureInterior();
+      setLoading(88,'تُرتّب البطاقات التعريفية…');setView(requestedView,false);renderFrame();
       window.__SCENE_READY__=true;document.body.dataset.ready='true';
-      if(CAPTURE_MODE)$('loading-screen').hidden=true;else setTimeout(()=>{$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;},reducedMotion?0:260);},reducedMotion?0:180);
+      if(CAPTURE_MODE)finishLoading();else setTimeout(finishLoading,reducedMotion?0:120);
       if(!CAPTURE_MODE)renderer.setAnimationLoop(animate);
     }catch(error){console.error('Model loading failed',error);$('loading-text').textContent='تعذّر تحميل ملفات المجسم. أعد تحميل الصفحة للمحاولة مرة أخرى.';$('loading-progress').style.width='100%';$('loading-progress').style.background='#c98265';}
   }
@@ -80,7 +96,7 @@ function startExperience(){
   function animate(now){const dt=Math.min((now-previousTime)/1000,.1);previousTime=now;if(dt>0)frameEMA=frameEMA*.96+dt*.04;frameCount++;if(frameCount%30===0)fps=Math.round(1/Math.max(frameEMA,.001));if(frameCount===180&&frameEMA>.034&&renderer.getPixelRatio()>1){renderer.setPixelRatio(1);renderer.setSize(innerWidth,innerHeight);}renderFrame();}
   function resetCamera(){
     if(currentView==='exterior'){
-      camera.fov=innerWidth<700?62:45;if(innerWidth<700)camera.position.set(78,62,80);else camera.position.set(52,41,53);controls.target.set(4,2.1,innerWidth<700?-1:1.5);controls.minDistance=34;controls.maxDistance=132;controls.minPolarAngle=.38;controls.maxPolarAngle=1.38;scene.fog.near=95;scene.fog.far=240;sun.intensity=3;hemi.intensity=2.15;roomLight.visible=false;
+      camera.fov=innerWidth<700?62:45;if(innerWidth<700)camera.position.set(88,76,92);else camera.position.set(68,56,72);controls.target.set(0,1.4,0);controls.minDistance=34;controls.maxDistance=170;controls.minPolarAngle=.30;controls.maxPolarAngle=1.38;scene.fog.near=110;scene.fog.far=280;sun.intensity=3;hemi.intensity=2.15;roomLight.visible=false;
     }else if(currentView==='interior'){
       camera.fov=innerWidth<700?64:48;
       if(currentStage==='after'){if(innerWidth<700)camera.position.set(-12.0,16.8,14.2);else camera.position.set(-8.8,14.0,10.8);controls.target.set(-.85,.40,.45);}
@@ -127,12 +143,12 @@ function startExperience(){
   function pickObject(event){if(Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)>6)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);raycaster.setFromCamera(pointer,camera);const model=currentView==='exterior'?exteriorModel:interiorModel;if(!model)return;const pickableItems=currentView==='exterior'?EXTERIOR_ITEMS:INTERIOR_ITEMS.filter(item=>currentStage==='after'||item.stage!=='after');for(const hit of raycaster.intersectObject(model,true)){let object=hit.object;while(object){const item=pickableItems.find((entry)=>objectMatches(object,entry));if(item){showInfo(item.id);return;}object=object.parent;}}}
   renderer.domElement.addEventListener('pointerdown',(event)=>{pointerStart={x:event.clientX,y:event.clientY};});renderer.domElement.addEventListener('pointerup',pickObject);
   controls.addEventListener('change',()=>{if(CAPTURE_MODE){renderer.render(scene,camera);updateLabels();}});
-  $('exterior-button').addEventListener('click',()=>setView('exterior'));$('interior-button').addEventListener('click',()=>setView('interior'));$('tools-button').addEventListener('click',()=>setView('tools'));$('lifetime-stage').addEventListener('click',()=>setStage('lifetime'));$('burial-stage').addEventListener('click',()=>setStage('after'));$('reset-button').addEventListener('click',()=>{resetCamera();renderFrame();});
+  $('exterior-button').addEventListener('click',()=>selectView('exterior'));$('interior-button').addEventListener('click',()=>selectView('interior'));$('tools-button').addEventListener('click',()=>selectView('tools'));$('lifetime-stage').addEventListener('click',()=>setStage('lifetime'));$('burial-stage').addEventListener('click',()=>setStage('after'));$('reset-button').addEventListener('click',()=>{resetCamera();renderFrame();});
   $('labels-toggle').addEventListener('click',()=>{labelsVisible=!labelsVisible;$('labels-layer').hidden=!labelsVisible;$('labels-toggle').setAttribute('aria-pressed',String(labelsVisible));$('labels-toggle').setAttribute('aria-label',labelsVisible?'إخفاء البطاقات':'إظهار البطاقات');});
   $('info-close').addEventListener('click',closeInfo);$('about-button').addEventListener('click',()=>$('about-dialog').showModal());
   document.querySelectorAll('[data-close]').forEach((button)=>button.addEventListener('click',()=>$(button.dataset.close).close()));document.querySelectorAll('dialog').forEach((dialog)=>dialog.addEventListener('click',(event)=>{if(event.target===dialog)dialog.close();}));document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&!$('info-panel').hidden)closeInfo();});
   addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=currentView==='exterior'?(innerWidth<700?62:45):(innerWidth<700?62:48);camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderFrame();});
-  window.__SCENE_READY__=false;window.__seek=()=>renderFrame();window.__play=()=>{};window.__setView=(view)=>{setView(view);renderFrame();};window.__setStage=(stage)=>{setStage(stage);renderFrame();};window.__selectItem=(id)=>{showInfo(id);renderFrame();};window.__getMetrics=()=>({view:currentView,stage:currentStage,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,fps,pixelRatio:renderer.getPixelRatio(),labels:labelButtons.length,selectedItemId});
+  window.__SCENE_READY__=false;window.__seek=()=>renderFrame();window.__play=()=>{};window.__setView=async(view)=>{await selectView(view);renderFrame();};window.__setStage=(stage)=>{setStage(stage);renderFrame();};window.__selectItem=(id)=>{showInfo(id);renderFrame();};window.__getMetrics=()=>({view:currentView,stage:currentStage,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,fps,pixelRatio:renderer.getPixelRatio(),labels:labelButtons.length,interiorLoaded:Boolean(interiorModel),selectedItemId});
   setupQuiz();loadModels();
 }
 
